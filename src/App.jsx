@@ -1,122 +1,47 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState, useEffect } from 'react';             // state and effects, we take them from react so we can use them 
+import SearchBar from './components/SearchBar.jsx';      //these are the new files i made for the components
+import LoadingSpinner from './components/LoadingSpinner.jsx';
+import ErrorMessage from './components/ErrorMessage.jsx';
+import WeatherCard from './components/WeatherCard.jsx';
 
-function App() {
-  const [count, setCount] = useState(0)
+import { loadWeather, friendly } from './api.js';       //these are the functions i made in api.js to get the data from the api and to make the error message readable for the user 
+
+export default function App() {                          // we know that a component is a function that returns jsx
+ //useState is smth from react that let u store the data so u can re render when the data changes.
+  const [city, setCity] = useState('');                  // city is the city looked up and setCity is the one that makes changing city possible so re-render, and we start with an empty text cz no data fetshed
+  const [weather, setWeather] = useState(null);          // same principal for weather and setweather, start null cz no data fetched
+  const [status, setStatus] = useState('idle');          // idle cz no search has been made yet 
+  const [error, setError] = useState('');                // this is for the error that the user see 
+
+  //useEffect is smth from react that let u run code after render, and also when data city changes, so u dont loop forever or you will always re render 
+  useEffect(() => {                                      
+    if (!city) return;                                   // on the first one no city yet, but in also in case no city afterward just go out of the function effect
+
+    // we start an async function cz were gonna use fetch api but the effect have to be ui not promise so we will call load at the end 
+    async function load() {                              
+      setStatus('loading');                              //  to show the loading message so user kow the state we re in
+      try {
+        const data = await loadWeather(city);            // wait for the info from geocoding + weather coming from the api
+        setWeather(data);                                // we put the data we took in setweather so we changed the variable weather
+        setStatus('ready');                              // we set the status to ready cz we were able to take the data, so iin te last lines where we check the status we will show the weather card with the data
+      } catch (err) {
+        setWeather(null);                                // remove every data from weather so we start from the begining 
+        setError(friendly(err));                         // we changed the error variable cz we found an error and turned it into a readable message with function friendly
+        setStatus('error');                              // we show the error box
+      }
+    }
+    load();                                              // we called it cz we cant return a promise with use effect                  
+  }, [city]);// we added city cause we want him to do use effect everytime the value of city changes
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <main>
+      <h1>Weather Dashboard</h1>
+      <SearchBar onSearch={setCity} disabled={status === 'loading'} /> {/* we pass the setCity to the search bar so it can change the city variable, also found an option disable where when we are loading the dearch button is turned off so the user wont be able to input anything new till after the loading has finished*/}
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      {status === 'idle' && <p className="status">Search for a city</p>}   {/* && : show only if the left side is true and show the right side if its a falsy */}
+      {status === 'loading' && <LoadingSpinner city={city} />}
+      {status === 'error' && <ErrorMessage message={error} />}
+      {status === 'ready' && <WeatherCard data={weather} />}
+    </main>
+  );
 }
-
-export default App
